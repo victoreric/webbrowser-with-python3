@@ -1,0 +1,67 @@
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtWebEngineWidgets import *
+
+import sys
+
+class MainWindow(QMainWindow):
+    def __init__(self, *args, **kwargs):
+        super(MainWindow, self).__init__(*args, **kwargs)
+        self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
+        self.tabs.tabBarDoubleClicked.connect(self.tab_open_doubleclick)
+        self.tabs.setTabsClosable(True)
+        self.tabs.tabCloseRequested.connect(self.close_current_tab)
+
+        self.setCentralWidget(self.tabs)
+
+        # Address bar
+        navtb = QToolBar("Navigation")
+        self.addToolBar(navtb)
+        self.urlbar = QLineEdit()
+        self.urlbar.returnPressed.connect(self.navigate_to_url) # press enter
+        navtb.addWidget(self.urlbar)    #navbar address
+
+
+        # Menu file
+        file_menu = self.menuBar().addMenu("&File")
+        new_tab_action = QAction("New Tab", self)
+        new_tab_action.triggered.connect(lambda _: self.add_new_tab())
+        file_menu.addAction(new_tab_action)
+
+        # Homepage
+        self.add_new_tab(QUrl('http://www.yandex.ru'), 'Homepage')
+        self.show()
+        self.setWindowTitle("App Webbrowser")
+
+
+    def add_new_tab(self, qurl=None, label="Blank"):
+        if qurl is None:
+            qurl = QUrl('')
+        browser = QWebEngineView()
+        browser.setUrl(qurl)
+        i = self.tabs.addTab(browser, label)
+        self.tabs.setCurrentIndex(i)
+
+    # Method add new tab
+    def tab_open_doubleclick(self, i):
+        if i == -1:  # No tab under the click
+            self.add_new_tab()
+
+
+    def close_current_tab(self, i):
+        if self.tabs.count() < 2:
+            return
+        self.tabs.removeTab(i)
+
+
+    def navigate_to_url(self):  # Does not receive the Url
+            q = QUrl(self.urlbar.text())
+            if q.scheme() == "":
+                q.setScheme("http")
+            self.tabs.currentWidget().setUrl(q)
+
+app = QApplication(sys.argv)
+window = MainWindow()
+
+app.exec_()

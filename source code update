@@ -1,0 +1,159 @@
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtWebEngineWidgets import *
+from PyQt5.QtGui import *
+from PyQt5.QtPrintSupport import *
+
+import sys
+import os
+
+class MainWindow(QMainWindow):
+    def __init__(self, *args, **kwargs):
+        super(MainWindow, self).__init__(*args, **kwargs)
+        self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
+        self.tabs.tabBarDoubleClicked.connect(self.tab_open_doubleclick)
+        # self.tabs.setTabsClosable(True)
+        # self.tabs.tabCloseRequested.connect(self.close_current_tab)
+        self.setCentralWidget(self.tabs)
+
+        # new. status bar
+        self.status = QStatusBar()
+        self.setStatusBar((self.status))
+
+        #new. add toolbar for icon
+        naviconbar= QToolBar("NavigationIcon") # add toolbar icon
+        naviconbar.setIconSize(QSize(16,16)) # size toolbar
+        self.addToolBar(naviconbar)         # show toolbar
+
+        #new. add icon in toolbar icon
+        back_btn = QAction(QIcon(os.path.join('images', 'arrow-180.png')), "Back", self)
+        back_btn.setStatusTip("Back to previous page")
+        back_btn.triggered.connect(lambda: self.tabs.currentWidget().back())
+        naviconbar.addAction(back_btn)  # show icon back_button
+
+        forward_btn = QAction("Forward", self)
+        forward_btn.setStatusTip("Forward")
+        forward_btn.triggered.connect(lambda: self.tabs.currentWidget().forward())
+        naviconbar.addAction(forward_btn)
+
+        reload_btn = QAction("Reload", self)
+        reload_btn.setStatusTip("Reload")
+        reload_btn.triggered.connect(lambda: self.tabs.currentWidget().reload())
+        naviconbar.addAction((reload_btn))
+
+        home_btn = QAction(QIcon(os.path.join('images', 'home.png')), "Home", self)
+        home_btn.setStatusTip("Go Home")
+        home_btn.triggered.connect(self.navigate_home)
+        naviconbar.addAction(home_btn)
+
+        naviconbar.addSeparator()
+
+        #  Address bar
+        navtb = QToolBar("Navigation")  # keywords add toolbar
+        self.addToolBar(navtb)    # add toolbar for url
+        self.urlbar = QLineEdit()   # box Url
+        self.urlbar.returnPressed.connect(self.navigate_to_url)  # press enter
+        navtb.addWidget(self.urlbar)  # navbar address
+
+
+        # Menu file
+        self.menuBar().setNativeMenuBar(False) # just for macbook
+        mainMenu = self.menuBar()
+
+        # new. Menu utama
+        FileMenu = mainMenu.addMenu("File ")
+        EditMenu = mainMenu.addMenu("&Edit")
+        AboutMenu = mainMenu.addMenu("About")
+
+        # new. sub menu new tab
+        new_tab_button = QAction("New Tab", self)
+        new_tab_button.triggered.connect(lambda _:self.add_new_tab())
+        FileMenu.addAction(new_tab_button)
+
+        # new. exit button sub menu
+        exitButton = QAction("Exit ^Q", self)
+        exitButton.triggered.connect(self.close)
+        exitButton.setShortcut("Ctrl + Q")
+        FileMenu.addAction(exitButton)
+
+        # new. add sub menu edit
+        open_btn = QAction("Open", self)
+        open_btn.triggered.connect(self.open_file)
+        EditMenu.addAction(open_btn)
+
+        Save_btn = QAction("Save", self)
+        Save_btn.triggered.connect(self.save_file)
+        EditMenu.addAction(Save_btn)
+
+
+        Print_btn = QAction("Print", self)
+        Print_btn.triggered.connect(self.print_page)
+        EditMenu.addAction(Print_btn)
+
+        # Homepage
+        self.add_new_tab(QUrl('http://www.yandex.ru'), 'Homepage')
+        self.show()
+        self.setWindowTitle("App Webbrowser")
+
+
+    def add_new_tab(self, qurl=None, label="Blank"):
+        if qurl is None:
+            qurl = QUrl('')
+        browser = QWebEngineView()
+        browser.setUrl(qurl)
+        i = self.tabs.addTab(browser, label)
+        self.tabs.setCurrentIndex(i)
+
+
+    # Method add new tab
+    def tab_open_doubleclick(self, i):
+        if i == -1:  # No tab under the click
+            self.add_new_tab()
+
+    def close_current_tab(self, i):
+        if self.tabs.count() < 2:
+            return
+        self.tabs.removeTab(i)
+
+    def navigate_to_url(self):  # Does not receive the Url
+            q = QUrl(self.urlbar.text())
+            if q.scheme() == "":
+                q.setScheme("http")
+            self.tabs.currentWidget().setUrl(q)
+
+    def navigate_home(self):
+        self.tabs.currentWidget().setUrl(QUrl("http://www.google.com"))
+
+
+    def open_file(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Open file", "",
+         "Hypertext Markup Language (*.htm *.html);;"
+                           "All files (*.*)")
+        if filename:
+            with open(filename, 'r') as f:
+                html = f.read()
+            self.tabs.currentWidget().setHtml(html)
+            self.urlbar.setText(filename)
+
+    def save_file(self):
+        filename, _ = QFileDialog.getSaveFileName(self, "Save Page As", "",
+                                                  "Hypertext Markup Language (*.htm *html);;"
+                                                  "All files (*.*)")
+        if filename:
+            def write_html_to_file(html):
+                with open(filename, 'w') as f:
+                    f.write(html)
+
+            self.browser.page().toHtml(write_html_to_file)
+
+
+    def print_page(self):
+        dlg = QPrintPreviewDialog()
+        dlg.paintRequested.connect(self.browser.print_)
+        dlg.exec_()
+
+
+app = QApplication(sys.argv)
+window = MainWindow()
+app.exec_()
